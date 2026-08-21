@@ -1,0 +1,18 @@
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:flashcard_mobile_app/main.dart';
+import 'package:flashcard_mobile_app/screens/splash_screen.dart';
+
+void main() {
+  testWidgets('shows splash then login', (WidgetTester tester) async {
+    await tester.pumpWidget(const FlashcardApp());
+
+    expect(find.byType(SplashScreen), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 2200));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Iniciar sesión'), findsOneWidget);
+    expect(find.text('Repaso Reválida'), findsOneWidget);
+  });
+}
