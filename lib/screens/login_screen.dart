@@ -75,111 +75,117 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            children: [
-              const SizedBox(height: 24),
-              const AppLogo(width: 168),
-              const SizedBox(height: 20),
-              const Text(
-                'Repaso Reválida',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Un espacio de calma para dominar\nla psicología.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 36),
-              AppTextField(
-                controller: _emailController,
-                hint: 'Correo electrónico',
-                icon: Icons.mail_outline_rounded,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                controller: _passwordController,
-                hint: 'Contraseña',
-                icon: Icons.lock_outline_rounded,
-                obscureText: _obscure,
-                suffix: IconButton(
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                  icon: Icon(
-                    _obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    color: AppColors.iconMuted,
-                    size: 22,
-                  ),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 14),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFDC2626),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 22),
-              GradientButton(
-                label: 'Iniciar sesión',
-                isLoading: _loading,
-                onPressed: _loading ? null : _login,
-              ),
-              const SizedBox(height: 22),
-              Wrap(
-                alignment: WrapAlignment.center,
-                children: [
-                  const Text(
-                    '¿No tienes cuenta? ',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _loading
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                    child: const Text(
-                      'Regístrate',
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const AppLogo(width: 168),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Repaso Reválida',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 26,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.link,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Un espacio de calma para dominar\nla psicología.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    AppTextField(
+                      controller: _emailController,
+                      hint: 'Correo electrónico',
+                      icon: Icons.mail_outline_rounded,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      controller: _passwordController,
+                      hint: 'Contraseña',
+                      icon: Icons.lock_outline_rounded,
+                      obscureText: _obscure,
+                      suffix: IconButton(
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: AppColors.iconMuted,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFDC2626),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    GradientButton(
+                      label: 'Iniciar sesión',
+                      isLoading: _loading,
+                      onPressed: _loading ? null : _login,
+                    ),
+                    const SizedBox(height: 40),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        const Text(
+                          '¿No tienes cuenta? ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _loading
+                              ? null
+                              : () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const RegisterScreen(),
+                                    ),
+                                  );
+                                },
+                          child: const Text(
+                            'Regístrate',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.link,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
