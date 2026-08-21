@@ -1,15 +1,39 @@
 import 'package:flutter/material.dart';
 
+import '../state/app_scope.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/ui_bits.dart';
 import 'login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  var _signingOut = false;
+
+  Future<void> _signOut() async {
+    setState(() => _signingOut = true);
+    await AppScope.of(context).signOut();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = AppScope.of(context).session;
+    final name = session?.displayName?.isNotEmpty == true
+        ? session!.displayName!
+        : 'Estudiante';
+    final email = session?.email ?? 'Repaso Reválida · Psicología';
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
@@ -41,18 +65,18 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
-                  'Estudiante',
-                  style: TextStyle(
+                Text(
+                  name,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Repaso Reválida · Psicología',
-                  style: TextStyle(
+                Text(
+                  email,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
@@ -73,12 +97,8 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 24),
           GradientButton(
             label: 'Cerrar sesión',
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
+            isLoading: _signingOut,
+            onPressed: _signingOut ? null : _signOut,
           ),
         ],
       ),

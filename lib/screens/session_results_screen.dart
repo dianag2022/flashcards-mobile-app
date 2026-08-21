@@ -1,25 +1,51 @@
 import 'package:flutter/material.dart';
 
-import '../models/topic.dart';
+import '../models/flashcard.dart';
+import '../models/study_mode.dart';
+import '../models/study_session_config.dart';
+import '../state/app_scope.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/ui_bits.dart';
 import 'flashcard_session_screen.dart';
 
-class SessionResultsScreen extends StatelessWidget {
+class SessionResultsScreen extends StatefulWidget {
   const SessionResultsScreen({
     super.key,
-    required this.topic,
+    required this.config,
     required this.knownCount,
     required this.total,
+    this.missedCards = const [],
   });
 
-  final Topic topic;
+  final StudySessionConfig config;
   final int knownCount;
   final int total;
+  final List<Flashcard> missedCards;
 
-  int get _toReview => total - knownCount;
-  double get _accuracy => total == 0 ? 0 : knownCount / total;
+  @override
+  State<SessionResultsScreen> createState() => _SessionResultsScreenState();
+}
+
+class _SessionResultsScreenState extends State<SessionResultsScreen> {
+  var _loadingNext = false;
+
+  int get _toReview => widget.total - widget.knownCount;
+  double get _accuracy =>
+      widget.total == 0 ? 0 : widget.knownCount / widget.total;
+
+  bool get _isRound => widget.config.mode.usesRounds;
+
+  List<Flashcard>? get _nextGroup {
+    final size = widget.config.mode.groupSize;
+    final all = widget.config.allCards;
+    if (size == null || all == null || widget.config.mode == StudyMode.adaptive) {
+      return null;
+    }
+    final start = (widget.config.roundIndex + 1) * size;
+    if (start >= all.length) return null;
+    return all.skip(start).take(size).toList();
+  }
 
   String get _headline {
     if (_accuracy >= 0.8) return '¡Excelente trabajo!';
@@ -28,8 +54,11 @@ class SessionResultsScreen extends StatelessWidget {
   }
 
   String get _message {
+    if (widget.config.mode == StudyMode.adaptive && widget.missedCards.isEmpty) {
+      return 'No fallaste ninguna en esta ronda. Comprobaremos si ya dominas el resto.';
+    }
     if (_accuracy >= 0.8) {
-      return 'Dominas gran parte de este tema. Un último repaso te dejará aún más seguro.';
+      return 'Dominas gran parte de este contenido. Un último repaso te dejará aún más seguro.';
     }
     if (_accuracy >= 0.4) {
       return 'Sigue repasando para fortalecer los conceptos que aún no dominas.';
@@ -37,9 +66,142 @@ class SessionResultsScreen extends StatelessWidget {
     return 'Cada sesión cuenta. Vuelve a intentarlo y verás cómo se afianzan las ideas.';
   }
 
+  String get _screenTitle {
+    if (!_isRound) return 'Sesión completada';
+    return 'Ronda ${widget.config.roundIndex + 1} completada';
+  }
+
+  Future<void> _continueAdaptive() async {
+    setState(() => _loadingNext = true);
+
+    List<Flashcard> next;
+    if (widget.missedCards.isNotEmpty) {
+      next = widget.missedCards;
+    } else {
+      try {
+        next = await AppScope.of(context).content.listReinforcement(
+          deckId: widget.config.deck.id,
+          categoryId: widget.config.subtopic?.id,
+        );
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _loadingNext = false);
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    if (next.isEmpty) {
+      setState(() => _loadingNext = false);
+      _showMastered();
+      return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => FlashcardSessionScreen(
+          config: widget.config.copyWith(
+            roundIndex: widget.config.roundIndex + 1,
+            presetCards: next.take(20).toList(),
+            allCards: widget.config.allCards,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _continueGroup() {
+    final next = _nextGroup;
+    if (next == null || next.isEmpty) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => FlashcardSessionScreen(
+          config: widget.config.copyWith(
+            roundIndex: widget.config.roundIndex + 1,
+            presetCards: next,
+            allCards: widget.config.allCards,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _retry() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => FlashcardSessionScreen(
+          config: StudySessionConfig(
+            deck: widget.config.deck,
+            subtopic: widget.config.subtopic,
+            mode: widget.config.mode,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMastered() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.emoji_events_outlined,
+                color: AppColors.tealDeep,
+                size: 40,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '¡Tema dominado!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Completaste tres aciertos seguidos en todas las flashcards de este contenido.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 20),
+              GradientButton(
+                label: 'Volver',
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(this.context).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final percent = (_accuracy * 100).round();
+    final nextGroup = _nextGroup;
+    final showNextGroup = nextGroup != null && nextGroup.isNotEmpty;
+    final showNextAdaptive = widget.config.mode == StudyMode.adaptive;
+    final primaryLabel = showNextAdaptive
+        ? (widget.missedCards.isEmpty
+            ? 'Comprobar dominio'
+            : 'Siguiente ronda')
+        : showNextGroup
+            ? 'Siguiente grupo'
+            : 'Reintentar';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,9 +216,9 @@ class SessionResultsScreen extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    const Text(
-                      'Sesión completada',
-                      style: TextStyle(
+                    Text(
+                      _screenTitle,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.tealDeep,
@@ -90,14 +252,14 @@ class SessionResultsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const TagBadge(
-                            label: 'RESULTADOS',
+                          TagBadge(
+                            label: _isRound ? 'RONDA' : 'RESULTADOS',
                             background: AppColors.badgeResultsBg,
                             foreground: AppColors.badgeResultsFg,
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            '$knownCount de $total',
+                            '${widget.knownCount} de ${widget.total}',
                             style: const TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.w700,
@@ -107,7 +269,7 @@ class SessionResultsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Respondiste correctamente $knownCount de $total flashcards.',
+                            'Respondiste correctamente ${widget.knownCount} de ${widget.total} flashcards.',
                             style: const TextStyle(
                               fontSize: 14,
                               color: AppColors.textMuted,
@@ -212,7 +374,7 @@ class SessionResultsScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '$knownCount respuestas',
+                                  '${widget.knownCount} respuestas',
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -257,18 +419,26 @@ class SessionResultsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               GradientButton(
-                label: 'Reintentar',
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute<void>(
-                      builder: (_) => FlashcardSessionScreen(topic: topic),
-                    ),
-                  );
-                },
+                label: primaryLabel,
+                isLoading: _loadingNext,
+                onPressed: showNextAdaptive
+                    ? _continueAdaptive
+                    : showNextGroup
+                        ? _continueGroup
+                        : _retry,
               ),
+              if (showNextGroup || showNextAdaptive) ...[
+                const SizedBox(height: 10),
+                SecondaryButton(
+                  label: 'Reintentar desde el inicio',
+                  foreground: AppColors.tealDeep,
+                  borderColor: Colors.transparent,
+                  onPressed: _retry,
+                ),
+              ],
               const SizedBox(height: 10),
               SecondaryButton(
-                label: 'Volver a temas',
+                label: 'Volver',
                 foreground: AppColors.tealDeep,
                 borderColor: Colors.transparent,
                 onPressed: () => Navigator.of(context).pop(),

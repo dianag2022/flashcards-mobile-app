@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../api/api_exception.dart';
+import '../state/app_scope.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_text_field.dart';
@@ -18,6 +20,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -27,11 +31,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const MainShell()),
-      (route) => false,
-    );
+  Future<void> _register() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Ingresa tu correo y contraseña.');
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _error = 'La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await AppScope.of(context).signUp(
+        email: email,
+        password: password,
+        displayName: name.isEmpty ? null : name,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const MainShell()),
+        (route) => false,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Ocurrió un error. Inténtalo de nuevo.';
+      });
+    }
   }
 
   @override
@@ -101,10 +143,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 14),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFDC2626),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               GradientButton(
                 label: 'Registrarse',
-                onPressed: _register,
+                isLoading: _loading,
+                onPressed: _loading ? null : _register,
               ),
               const SizedBox(height: 22),
               Wrap(
@@ -118,7 +172,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: _loading ? null : () => Navigator.of(context).pop(),
                     child: const Text(
                       'Inicia sesión',
                       style: TextStyle(

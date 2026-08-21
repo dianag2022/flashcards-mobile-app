@@ -77,7 +77,11 @@ class TopicCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                '$percent%',
+                topic.progress > 0
+                    ? '$percent%'
+                    : topic.cardCount == 1
+                        ? '1 tarjeta'
+                        : '${topic.cardCount} tarjetas',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

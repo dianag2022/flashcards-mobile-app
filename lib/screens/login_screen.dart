@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../api/api_exception.dart';
+import '../state/app_scope.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_text_field.dart';
@@ -19,6 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
+  bool _loading = false;
+  String? _error;
 
   @override
   void initState() {
@@ -33,10 +37,39 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const MainShell()),
-    );
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Ingresa tu correo y contraseña.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await AppScope.of(context).signIn(email: email, password: password);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const MainShell()),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Ocurrió un error. Inténtalo de nuevo.';
+      });
+    }
   }
 
   @override
@@ -95,10 +128,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 14),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFDC2626),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               GradientButton(
                 label: 'Iniciar sesión',
-                onPressed: _login,
+                isLoading: _loading,
+                onPressed: _loading ? null : _login,
               ),
               const SizedBox(height: 22),
               Wrap(
@@ -112,13 +157,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const RegisterScreen(),
-                        ),
-                      );
-                    },
+                    onTap: _loading
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            );
+                          },
                     child: const Text(
                       'Regístrate',
                       style: TextStyle(

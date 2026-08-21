@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../widgets/app_logo.dart';
+import '../state/app_scope.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_logo.dart';
 import 'login_screen.dart';
+import 'main_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,15 +21,21 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    Future<void>.delayed(const Duration(milliseconds: 2200), _goToLogin);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _boot());
   }
 
-  void _goToLogin() {
-    if (_navigated || !mounted) return;
+  Future<void> _boot() async {
+    final delay = Future<void>.delayed(const Duration(milliseconds: 1800));
+    await AppScope.of(context).restoreSession();
+    await delay;
+    if (!mounted || _navigated) return;
     _navigated = true;
+
+    final signedIn = AppScope.of(context).isSignedIn;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        pageBuilder: (_, __, ___) => const LoginScreen(),
+        pageBuilder: (_, __, ___) =>
+            signedIn ? const MainShell() : const LoginScreen(),
         transitionDuration: const Duration(milliseconds: 500),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -38,16 +46,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GestureDetector(
-        onTap: _goToLogin,
-        behavior: HitTestBehavior.opaque,
-        child: const DecoratedBox(
-          decoration: BoxDecoration(gradient: AppColors.splashGradient),
-          child: SizedBox.expand(
-            child: Center(
-              child: AppLogo(white: true, width: 236),
-            ),
+    return const Scaffold(
+      body: DecoratedBox(
+        decoration: BoxDecoration(gradient: AppColors.splashGradient),
+        child: SizedBox.expand(
+          child: Center(
+            child: AppLogo(white: true, width: 236),
           ),
         ),
       ),
