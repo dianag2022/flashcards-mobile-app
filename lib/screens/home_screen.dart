@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _MetricCard(
-                          label: 'Racha',
+                          label: 'Progreso',
                           value: _streakLabel(activity.streak),
                         ),
                       ),
@@ -248,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ] else ...[
                   const SizedBox(height: 14),
                   _MetricCard(
-                    label: 'Racha',
+                    label: 'Progreso',
                     value: _streakLabel(activity.streak),
                   ),
                 ],
