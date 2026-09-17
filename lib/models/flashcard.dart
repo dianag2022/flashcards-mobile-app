@@ -28,4 +28,16 @@ class Flashcard {
       explanation: json['explanation'] as String? ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'deckId': deckId,
+      'categoryId': categoryId,
+      'front': question,
+      'back': answer,
+      'tag': tag,
+      'explanation': explanation,
+    };
+  }
 }

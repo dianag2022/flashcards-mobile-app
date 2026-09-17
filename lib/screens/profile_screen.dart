@@ -34,9 +34,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : 'Estudiante';
     final email = session?.email ?? 'Repaso Reválida · Psicología';
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+    return ListView(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
         children: [
           const Text(
             'Perfil',
@@ -101,8 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: _signingOut ? null : _signOut,
           ),
         ],
-      ),
-    );
+      );
   }
 }
 

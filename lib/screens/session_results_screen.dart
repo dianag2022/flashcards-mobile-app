@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/motivational_messages.dart';
 import '../models/flashcard.dart';
+import '../models/in_progress_session.dart';
+import '../models/recent_study.dart';
 import '../models/study_mode.dart';
 import '../models/study_session_config.dart';
 import '../state/app_scope.dart';
@@ -29,12 +32,62 @@ class SessionResultsScreen extends StatefulWidget {
 
 class _SessionResultsScreenState extends State<SessionResultsScreen> {
   var _loadingNext = false;
+  late final MotivationalCopy _copy;
 
   int get _toReview => widget.total - widget.knownCount;
   double get _accuracy =>
       widget.total == 0 ? 0 : widget.knownCount / widget.total;
 
   bool get _isRound => widget.config.mode.usesRounds;
+
+  @override
+  void initState() {
+    super.initState();
+    _copy = MotivationalMessages.pick(
+      accuracy: widget.total == 0 ? 0 : widget.knownCount / widget.total,
+      adaptiveClearRound:
+          widget.config.mode == StudyMode.adaptive && widget.missedCards.isEmpty,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncPending());
+  }
+
+  Future<void> _syncPending() async {
+    if (!mounted || !widget.config.trackActivity) return;
+    final activity = AppScope.of(context).activity;
+    final next = _nextGroup;
+    if (next != null && next.isNotEmpty) {
+      await activity.saveInProgress(_pendingRound(cards: next));
+      return;
+    }
+    if (widget.config.mode == StudyMode.adaptive &&
+        widget.missedCards.isNotEmpty) {
+      await activity.saveInProgress(
+        _pendingRound(cards: widget.missedCards.take(20).toList()),
+      );
+      return;
+    }
+    await activity.completeSession(
+      deck: widget.config.deck,
+      subtopic: widget.config.subtopic,
+      mode: widget.config.mode,
+    );
+  }
+
+  InProgressSession _pendingRound({required List<Flashcard> cards}) {
+    return InProgressSession(
+      scope: RecentStudy.fromSession(
+        deck: widget.config.deck,
+        subtopic: widget.config.subtopic,
+      ),
+      mode: widget.config.mode,
+      order: widget.config.order,
+      roundIndex: widget.config.roundIndex + 1,
+      cardIndex: 0,
+      knownCount: 0,
+      roundCards: cards,
+      allCards: widget.config.allCards ?? cards,
+    );
+  }
 
   List<Flashcard>? get _nextGroup {
     final size = widget.config.mode.groupSize;
@@ -47,24 +100,9 @@ class _SessionResultsScreenState extends State<SessionResultsScreen> {
     return all.skip(start).take(size).toList();
   }
 
-  String get _headline {
-    if (_accuracy >= 0.8) return '¡Excelente trabajo!';
-    if (_accuracy >= 0.4) return '¡Vas muy bien!';
-    return 'Sigue practicando';
-  }
+  String get _headline => _copy.headline;
 
-  String get _message {
-    if (widget.config.mode == StudyMode.adaptive && widget.missedCards.isEmpty) {
-      return 'No fallaste ninguna en esta ronda. Comprobaremos si ya dominas el resto.';
-    }
-    if (_accuracy >= 0.8) {
-      return 'Dominas gran parte de este contenido. Un último repaso te dejará aún más seguro.';
-    }
-    if (_accuracy >= 0.4) {
-      return 'Sigue repasando para fortalecer los conceptos que aún no dominas.';
-    }
-    return 'Cada sesión cuenta. Vuelve a intentarlo y verás cómo se afianzan las ideas.';
-  }
+  String get _message => _copy.body;
 
   String get _screenTitle {
     if (!_isRound) return 'Sesión completada';
@@ -135,6 +173,7 @@ class _SessionResultsScreenState extends State<SessionResultsScreen> {
             deck: widget.config.deck,
             subtopic: widget.config.subtopic,
             mode: widget.config.mode,
+            order: widget.config.order,
           ),
         ),
       ),

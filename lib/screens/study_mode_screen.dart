@@ -25,6 +25,7 @@ class StudyModeScreen extends StatefulWidget {
 
 class _StudyModeScreenState extends State<StudyModeScreen> {
   StudyMode _mode = StudyMode.viewAll;
+  CardOrder _order = CardOrder.fixed;
 
   String get _scopeTitle => widget.subtopic?.title ?? widget.deck.title;
 
@@ -36,6 +37,7 @@ class _StudyModeScreenState extends State<StudyModeScreen> {
             deck: widget.deck,
             subtopic: widget.subtopic,
             mode: _mode,
+            order: _order,
           ),
         ),
       ),
@@ -85,7 +87,26 @@ class _StudyModeScreenState extends State<StudyModeScreen> {
                       _ModeCard(
                         mode: mode,
                         selected: _mode == mode,
+                        entireTopic: widget.subtopic == null,
                         onTap: () => setState(() => _mode = mode),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Orden de las tarjetas',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    for (final order in CardOrder.values) ...[
+                      _OrderCard(
+                        order: order,
+                        selected: _order == order,
+                        onTap: () => setState(() => _order = order),
                       ),
                       const SizedBox(height: 10),
                     ],
@@ -108,11 +129,13 @@ class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.mode,
     required this.selected,
+    required this.entireTopic,
     required this.onTap,
   });
 
   final StudyMode mode;
   final bool selected;
+  final bool entireTopic;
   final VoidCallback onTap;
 
   @override
@@ -149,7 +172,73 @@ class _ModeCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  mode.description,
+                  mode.descriptionFor(entireTopic: entireTopic),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            selected
+                ? Icons.radio_button_checked_rounded
+                : Icons.radio_button_off_rounded,
+            color: selected ? AppColors.tealDeep : AppColors.iconMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderCard extends StatelessWidget {
+  const _OrderCard({
+    required this.order,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final CardOrder order;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFFE8F8F4) : AppColors.inputFill,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              order.icon,
+              color: selected ? AppColors.tealDeep : AppColors.iconMuted,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  order.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  order.description,
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,

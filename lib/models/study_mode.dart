@@ -39,6 +39,21 @@ extension StudyModeX on StudyMode {
     }
   }
 
+  String descriptionFor({required bool entireTopic}) {
+    switch (this) {
+      case StudyMode.reviewIncorrect:
+        return entireTopic
+            ? 'Empieza por las que aún no dominas de todos los subtemas.'
+            : 'Empieza por las que aún no dominas de este subtema.';
+      case StudyMode.adaptive:
+        return entireTopic
+            ? 'Rondas de 20 centradas en lo que fallaste, hasta dominar el tema.'
+            : 'Rondas de 20 centradas en lo que fallaste de este subtema.';
+      default:
+        return description;
+    }
+  }
+
   IconData get icon {
     switch (this) {
       case StudyMode.viewAll:
@@ -70,4 +85,38 @@ extension StudyModeX on StudyMode {
       this == StudyMode.groupsOf10 ||
       this == StudyMode.groupsOf20 ||
       this == StudyMode.adaptive;
+}
+
+enum CardOrder {
+  fixed,
+  random,
+}
+
+extension CardOrderX on CardOrder {
+  String get title {
+    switch (this) {
+      case CardOrder.fixed:
+        return 'Orden fijo';
+      case CardOrder.random:
+        return 'Orden aleatorio';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case CardOrder.fixed:
+        return 'Las tarjetas aparecen en el orden original del tema.';
+      case CardOrder.random:
+        return 'Mezcla las tarjetas al empezar cada sesión.';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case CardOrder.fixed:
+        return Icons.format_list_numbered_rounded;
+      case CardOrder.random:
+        return Icons.shuffle_rounded;
+    }
+  }
 }

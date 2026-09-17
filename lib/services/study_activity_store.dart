@@ -3,30 +3,42 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/in_progress_session.dart';
 import '../models/recent_study.dart';
+import '../models/study_mode.dart';
 import '../models/subtopic.dart';
 import '../models/topic.dart';
 
 class StudyActivityStore extends ChangeNotifier {
   RecentStudy? lastStudy;
   List<RecentStudy> recent = const [];
+  List<InProgressSession> pending = const [];
   int streak = 0;
   DateTime? updatedAt;
+  DateTime? insightsAt;
 
   String? _uid;
 
+  static const _maxPending = 8;
+
   String get _lastKey => 'study.$_uid.last';
   String get _recentKey => 'study.$_uid.recent';
+  String get _pendingKey => 'study.$_uid.pending';
   String get _dateKey => 'study.$_uid.lastDate';
   String get _streakKey => 'study.$_uid.streak';
+
+  InProgressSession? get latestPending =>
+      pending.isEmpty ? null : pending.first;
 
   Future<void> load(String? uid) async {
     _uid = uid;
     lastStudy = null;
     recent = const [];
+    pending = const [];
     streak = 0;
     if (uid == null || uid.isEmpty) {
       updatedAt = DateTime.now();
+      insightsAt = updatedAt;
       notifyListeners();
       return;
     }
@@ -58,7 +70,19 @@ class StudyActivityStore extends ChangeNotifier {
       await prefs.setInt(_streakKey, 0);
     }
 
+    final pendingRaw = prefs.getString(_pendingKey);
+    if (pendingRaw != null && pendingRaw.isNotEmpty) {
+      final decoded = jsonDecode(pendingRaw);
+      if (decoded is List) {
+        pending = [
+          for (final item in decoded)
+            if (item is Map<String, dynamic>) InProgressSession.fromJson(item),
+        ];
+      }
+    }
+
     updatedAt = DateTime.now();
+    insightsAt = updatedAt;
     notifyListeners();
   }
 
@@ -100,6 +124,57 @@ class StudyActivityStore extends ChangeNotifier {
     await prefs.setInt(_streakKey, streak);
 
     updatedAt = DateTime.now();
+    insightsAt = updatedAt;
+    notifyListeners();
+  }
+
+  Future<void> saveInProgress(InProgressSession session) async {
+    if (_uid == null || _uid!.isEmpty) return;
+    if (session.roundCards.isEmpty) return;
+
+    final saved = InProgressSession(
+      scope: session.scope,
+      mode: session.mode,
+      order: session.order,
+      roundIndex: session.roundIndex,
+      cardIndex: session.cardIndex.clamp(0, session.roundCards.length - 1),
+      knownCount: session.knownCount,
+      roundCards: session.roundCards,
+      allCards: session.allCards,
+      missedCards: session.missedCards,
+      updatedAt: DateTime.now(),
+    );
+
+    pending = [
+      saved,
+      ...pending.where((item) => item.key != saved.key),
+    ].take(_maxPending).toList();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _pendingKey,
+      jsonEncode([for (final item in pending) item.toJson()]),
+    );
+    updatedAt = DateTime.now();
+    notifyListeners();
+  }
+
+  Future<void> completeSession({
+    required Topic deck,
+    Subtopic? subtopic,
+    required StudyMode mode,
+  }) async {
+    if (_uid == null || _uid!.isEmpty) return;
+    final key =
+        '${RecentStudy.fromSession(deck: deck, subtopic: subtopic).key}:${mode.name}';
+    pending = [for (final item in pending) if (item.key != key) item];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _pendingKey,
+      jsonEncode([for (final item in pending) item.toJson()]),
+    );
+    updatedAt = DateTime.now();
+    insightsAt = updatedAt;
     notifyListeners();
   }
 
@@ -107,8 +182,10 @@ class StudyActivityStore extends ChangeNotifier {
     _uid = null;
     lastStudy = null;
     recent = const [];
+    pending = const [];
     streak = 0;
     updatedAt = DateTime.now();
+    insightsAt = updatedAt;
     notifyListeners();
   }
 

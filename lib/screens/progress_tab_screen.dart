@@ -24,15 +24,14 @@ class _ProgressTabScreenState extends State<ProgressTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: FutureBuilder<List<Topic>>(
+    return FutureBuilder<List<Topic>>(
         future: _future,
         builder: (context, snapshot) {
           final topics = snapshot.data ?? const <Topic>[];
           final totalCards = topics.fold<int>(0, (sum, t) => sum + t.cardCount);
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             children: [
               const Text(
                 'Tu progreso',
@@ -136,7 +135,6 @@ class _ProgressTabScreenState extends State<ProgressTabScreen> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 }

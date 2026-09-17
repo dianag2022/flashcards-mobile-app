@@ -31,12 +31,11 @@ class _TopicsScreenState extends State<TopicsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: FutureBuilder<List<Topic>>(
+    return FutureBuilder<List<Topic>>(
         future: _future,
         builder: (context, snapshot) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             children: [
               const Text(
                 'Selecciona un tema',
@@ -91,8 +90,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 }
 
